@@ -18,6 +18,7 @@ class PiPHelper: NSObject, AVPictureInPictureControllerDelegate {
     private var isEnable: Bool = false
     private var enabledWhenBackground: Bool = false
     private var rootWindow: UIWindow?
+    private var wasRestoreCalled: Bool = false
 
     private var registrar: FlutterPluginRegistrar?
 
@@ -185,6 +186,16 @@ class PiPHelper: NSObject, AVPictureInPictureControllerDelegate {
         if let firstWindow = UIApplication.shared.windows.first, rootWindow != nil {
             let rect = firstWindow.rootViewController?.view.frame ?? CGRect(x: 0, y: 0, width: UIScreen.main.bounds.size.width, height: UIScreen.main.bounds.size.height)
             setPiPStatus(0)
+            
+            // Send PiP started event
+            channels.forEach { channel in
+                channel.value.invokeMethod("onPiPModeChanged", arguments: [
+                    "isInPip": true,
+                    "lifecycleState": "STARTED",
+                    "dismissed": false
+                ])
+            }
+            
             if createNewEngine {
                 flutterController?.view.frame = rect
                 firstWindow.rootViewController = flutterController
@@ -208,9 +219,38 @@ class PiPHelper: NSObject, AVPictureInPictureControllerDelegate {
     }
 
     public func pictureInPictureControllerDidStopPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+        // Check if restore callback was called to distinguish expand vs dismiss
+        if !wasRestoreCalled && !isCallDisable {
+            // User DISMISSED/CLOSED PiP
+            channels.forEach { channel in
+                channel.value.invokeMethod("onPiPModeChanged", arguments: [
+                    "isInPip": false,
+                    "lifecycleState": "STOPPED",
+                    "dismissed": true
+                ])
+            }
+        }
+        wasRestoreCalled = false
+        
         if !isCallDisable {
             dispose()
         }
+    }
+    
+    public func pictureInPictureController(
+        _ pictureInPictureController: AVPictureInPictureController,
+        restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // User EXPANDED PiP (tapped to return to full screen)
+        wasRestoreCalled = true
+        channels.forEach { channel in
+            channel.value.invokeMethod("onPiPModeChanged", arguments: [
+                "isInPip": false,
+                "lifecycleState": "RESUMED",
+                "dismissed": false
+            ])
+        }
+        completionHandler()
     }
 
     public func dispose() {

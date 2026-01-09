@@ -110,6 +110,27 @@ void toggle() {
 void disable() {
   FlPiP().disable();
 }
+
+/// 监听画中画退出事件（展开或关闭）
+/// Listen to PiP exit events (expand or dismiss)
+void listenToExitEvents() {
+  FlPiP().exitEvents.listen((event) {
+    if (!event.isInPip) {
+      if (event.dismissed) {
+        // User closed PiP → finish app or handle dismiss
+        print('PiP was dismissed');
+        // SystemNavigator.pop(); // or Navigator.popAndPushNewRoute
+      } else {
+        // User expanded PiP → show full UI
+        print('PiP was expanded');
+        // showFullScreenUI();
+      }
+    } else {
+      // PiP started
+      print('PiP started');
+    }
+  });
+}
 ```
 
 - 如果使用enableWithEngine方法必须在main文件中添加这个main方法

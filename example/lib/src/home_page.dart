@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:example/main.dart';
 import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/material.dart';
@@ -5,8 +7,61 @@ import 'package:flutter/material.dart';
 const videoPath = 'assets/landscape.mp4';
 const closeIconPath = 'assets/close.png';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  StreamSubscription<PipExitEvent>? _exitEventSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to PiP exit events for logging
+    _exitEventSubscription = FlPiP().exitEvents.listen((event) {
+      debugPrint('[FlPiP Example] === PiP Exit Event Received ===');
+      debugPrint('[FlPiP Example] isInPip: ${event.isInPip}');
+      debugPrint('[FlPiP Example] lifecycleState: ${event.lifecycleState}');
+      debugPrint('[FlPiP Example] dismissed: ${event.dismissed}');
+      debugPrint('[FlPiP Example] exitReason: ${event.exitReason}');
+      
+      if (!event.isInPip) {
+        if (event.dismissed) {
+          debugPrint('[FlPiP Example] ✅ ACTION: PiP was CLOSED/DISMISSED by user');
+        } else {
+          debugPrint('[FlPiP Example] ✅ ACTION: PiP was EXPANDED (user tapped to return)');
+        }
+      } else {
+        debugPrint('[FlPiP Example] ✅ ACTION: PiP was STARTED');
+      }
+      debugPrint('[FlPiP Example] === End PiP Exit Event ===');
+      
+      // Show snackbar for user feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              event.isInPip
+                  ? 'PiP Started'
+                  : event.dismissed
+                      ? 'PiP Closed/Dismissed'
+                      : 'PiP Expanded',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _exitEventSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(

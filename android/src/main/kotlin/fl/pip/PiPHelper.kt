@@ -384,9 +384,45 @@ class PiPHelper private constructor() {
         isForeground = true
     }
 
-    fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
+    fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        lifecycleState: String? = null,
+        dismissed: Boolean = false
+    ) {
         isEnabledPIP = isInPictureInPictureMode
+        
+        Log.d("FlPiP", "=== PiPHelper.onPictureInPictureModeChanged ===")
+        Log.d("FlPiP", "isInPictureInPictureMode: $isInPictureInPictureMode")
+        Log.d("FlPiP", "lifecycleState: $lifecycleState")
+        Log.d("FlPiP", "dismissed: $dismissed")
+        Log.d("FlPiP", "Number of channels: ${channels.size}")
+        
+        // Send PiP mode change event with lifecycle information
+        if (lifecycleState != null) {
+            val eventData = mapOf(
+                "isInPip" to isInPictureInPictureMode,
+                "lifecycleState" to lifecycleState,
+                "dismissed" to dismissed,
+            )
+            Log.d("FlPiP", "Sending event to Flutter: $eventData")
+            channels.forEach {
+                it.invokeMethod("onPiPModeChanged", eventData)
+            }
+            Log.d("FlPiP", "Event sent successfully to Flutter")
+        } else {
+            Log.w("FlPiP", "lifecycleState is null, skipping event send")
+        }
+        
         setPiPStatus(if (isInPictureInPictureMode) 0 else 1)
+        
+        // If PiP was dismissed (lifecycle state is CREATED), finish the activity
+        if (!isInPictureInPictureMode && dismissed && activity != null) {
+            Log.d("FlPiP", "PiP was DISMISSED - calling finishAndRemoveTask()")
+            activity!!.finishAndRemoveTask()
+        } else if (!isInPictureInPictureMode && !dismissed) {
+            Log.d("FlPiP", "PiP was EXPANDED - returning to full screen")
+        }
+        Log.d("FlPiP", "=== End PiPHelper.onPictureInPictureModeChanged ===")
     }
 
 }

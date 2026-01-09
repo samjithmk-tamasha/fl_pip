@@ -4,6 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Logging helper
+void _log(String message) {
+  debugPrint('[FlPiP] $message');
+}
+
 typedef PiPBuilderCallback = Widget Function(PiPStatusInfo? status);
 
 class PiPBuilder extends StatefulWidget {
@@ -58,6 +63,58 @@ enum PiPStatus {
   unavailable
 }
 
+/// PiP exit reason
+enum PipExitReason {
+  /// User expanded PiP (tapped to return to full screen)
+  expanded,
+
+  /// User dismissed/closed PiP
+  dismissed
+}
+
+/// PiP mode change event
+class PipExitEvent {
+  PipExitEvent({
+    required this.isInPip,
+    required this.lifecycleState,
+    required this.dismissed,
+  }) {
+    _log('PipExitEvent created: isInPip=$isInPip, lifecycleState=$lifecycleState, dismissed=$dismissed');
+  }
+
+  PipExitEvent.fromMap(Map<dynamic, dynamic> map)
+      : isInPip = map['isInPip'] as bool,
+        lifecycleState = map['lifecycleState'] as String,
+        dismissed = map['dismissed'] as bool {
+    _log('=== PipExitEvent.fromMap ===');
+    _log('Raw map data: $map');
+    _log('Parsed - isInPip: $isInPip');
+    _log('Parsed - lifecycleState: $lifecycleState');
+    _log('Parsed - dismissed: $dismissed');
+    _log('Exit reason: ${dismissed ? "DISMISSED" : "EXPANDED"}');
+    _log('=== End PipExitEvent.fromMap ===');
+  }
+
+  /// Whether PiP is currently active
+  final bool isInPip;
+
+  /// Lifecycle state (Android: CREATED, RESUMED, etc. | iOS: STARTED, RESUMED, STOPPED)
+  final String lifecycleState;
+
+  /// Whether PiP was dismissed (true) or expanded (false)
+  /// CREATED = true (dismiss), RESUMED = false (expand)
+  final bool dismissed;
+
+  /// Get exit reason
+  PipExitReason get exitReason =>
+      dismissed ? PipExitReason.dismissed : PipExitReason.expanded;
+
+  @override
+  String toString() {
+    return 'PipExitEvent(isInPip: $isInPip, lifecycleState: $lifecycleState, dismissed: $dismissed, exitReason: $exitReason)';
+  }
+}
+
 class PiPStatusInfo {
   PiPStatusInfo(
       {required this.status,
@@ -88,15 +145,44 @@ class FlPiP {
 
   FlPiP._() {
     _channel.setMethodCallHandler((call) async {
+      _log('=== Method Call Received ===');
+      _log('Method: ${call.method}');
+      _log('Arguments: ${call.arguments}');
+      
       switch (call.method) {
         case 'onPiPStatus':
+          _log('Handling onPiPStatus');
           status.value = PiPStatusInfo.fromMap(call.arguments);
           break;
+        case 'onPiPModeChanged':
+          _log('Handling onPiPModeChanged');
+          try {
+            final event = PipExitEvent.fromMap(call.arguments);
+            _log('Adding event to stream: isInPip=${event.isInPip}, dismissed=${event.dismissed}');
+            _log('Stream listeners count: ${_exitStreamController.hasListener ? "has listeners" : "no listeners"}');
+            _exitStreamController.add(event);
+            _log('Event added to stream successfully');
+          } catch (e, stackTrace) {
+            _log('ERROR parsing PipExitEvent: $e');
+            _log('Stack trace: $stackTrace');
+          }
+          break;
+        default:
+          _log('Unknown method: ${call.method}');
       }
+      _log('=== End Method Call ===');
     });
   }
 
   final ValueNotifier<PiPStatusInfo?> status = ValueNotifier(null);
+
+  /// Stream controller for PiP exit events
+  final StreamController<PipExitEvent> _exitStreamController =
+      StreamController<PipExitEvent>.broadcast();
+
+  /// Stream of PiP exit events
+  /// Listen to this stream to detect when PiP is expanded or dismissed
+  Stream<PipExitEvent> get exitEvents => _exitStreamController.stream;
 
   /// 开启画中画
   /// enable picture-in-picture
@@ -149,6 +235,11 @@ class FlPiP {
   /// ios supports background switching only
   Future<void> toggle(AppState state) =>
       _channel.invokeMethod('toggle', state == AppState.foreground);
+
+  /// Dispose resources
+  void dispose() {
+    _exitStreamController.close();
+  }
 }
 
 enum AppState {

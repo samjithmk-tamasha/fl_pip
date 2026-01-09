@@ -1,3 +1,11 @@
+## 3.3.0
+
+* Add cross-platform PiP expand vs dismiss detection
+* Add `exitEvents` stream to detect when PiP is expanded or dismissed
+* Android: Detect lifecycle state (CREATED = dismissed, RESUMED = expanded)
+* iOS: Use delegate callbacks to distinguish expand vs dismiss
+* Add `PipExitEvent` class with `dismissed` flag and `exitReason` enum
+
 ## 3.2.1
 
 * Update gradle version
