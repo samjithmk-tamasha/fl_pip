@@ -415,10 +415,11 @@ class PiPHelper private constructor() {
         
         setPiPStatus(if (isInPictureInPictureMode) 0 else 1)
         
-        // If PiP was dismissed (lifecycle state is CREATED), finish the activity
+        // Handle PiP exit events - let Flutter control app lifecycle
         if (!isInPictureInPictureMode && dismissed && activity != null) {
-            Log.d("FlPiP", "PiP was DISMISSED - calling finishAndRemoveTask()")
-            activity!!.finishAndRemoveTask()
+            Log.d("FlPiP", "PiP was DISMISSED - event sent to Flutter, letting Flutter handle app lifecycle")
+            // Removed finishAndRemoveTask() - Flutter will handle cleanup and app state
+            // This allows the app to stay alive and remain in recent apps
         } else if (!isInPictureInPictureMode && !dismissed) {
             Log.d("FlPiP", "PiP was EXPANDED - returning to full screen")
         }
