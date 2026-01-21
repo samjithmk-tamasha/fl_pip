@@ -22,7 +22,6 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import io.flutter.FlutterInjector
-import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterSurfaceView
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
@@ -33,6 +32,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.util.GeneratedPluginRegister
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import android.app.Activity
 
 class PiPHelper private constructor() {
     companion object {
@@ -49,7 +49,7 @@ class PiPHelper private constructor() {
     private var createNewEngine = false
     private var enabledWhenBackground = false
     private var context: Context? = null
-    private var activity: FlutterActivity? = null
+    private var activity: Activity? = null
     private var pluginBinding: FlutterPlugin.FlutterPluginBinding? = null
     private var enableArgs: Map<*, *> = mutableMapOf<String, Any?>()
     private var engineId = "pip.flutter"
@@ -66,7 +66,7 @@ class PiPHelper private constructor() {
     // 是否开启WM
     private var isEnabledWM = false
 
-    fun setActivity(activity: FlutterActivity, context: Context) {
+    fun setActivity(activity: Activity, context: Context) {
         this.activity = activity
         this.context = context
     }
